@@ -48,7 +48,6 @@ Rispondi ESCLUSIVAMENTE con un array JSON valido. Niente testo, niente backtick,
           maxOutputTokens: 2000,
           responseMimeType: "application/json"
         },
-        thinkingConfig: { thinkingBudget: 0 }
       }),
     });
 
