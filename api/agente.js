@@ -25,14 +25,15 @@ export default async function handler(req) {
   let prompt;
 
   if (azione === "cerca") {
-    prompt = `Sei un agente commerciale per Fablab Perugia (plastici architettonici, stampa 3D, taglio laser, rendering 3D, fresatura CNC).
-Genera 4 prospect di tipo "${tipo}" in "${zona}" interessati a "${servizio}". Tono email: ${tono}.
-Rispondi SOLO con JSON array, zero testo extra:
-[{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."}]`;
+    prompt = `Sei agente commerciale Fablab Perugia (plastici architettonici, stampa 3D, taglio laser, rendering 3D, fresatura CNC).
+Genera 4 prospect di tipo "${tipo}" in "${zona}" per "${servizio}". Tono email: ${tono}.
+Ogni motivo max 1 frase. Ogni email_body max 3 frasi brevi + concludi SEMPRE con: "Potete visitare i nostri lavori su www.fablabperugia.it/portfolio"
+Rispondi SOLO con questo JSON, niente altro:
+[{"nome":"Azienda Srl","contatto":"Mario Rossi (titolare)","citta":"Ancona (AN)","motivo":"Frase breve motivo.","email_subject":"Oggetto breve","email_body":"Frase 1. Frase 2. Frase 3. Potete visitare i nostri lavori su www.fablabperugia.it/portfolio"},{"nome":"Studio Bianchi","contatto":"Anna Bianchi (arch.)","citta":"Pesaro (PU)","motivo":"Frase breve.","email_subject":"Oggetto","email_body":"Frase 1. Frase 2. Frase 3. Potete visitare i nostri lavori su www.fablabperugia.it/portfolio"},{"nome":"Arch Studio","contatto":"Luca Verdi (socio)","citta":"Macerata (MC)","motivo":"Frase breve.","email_subject":"Oggetto","email_body":"Frase 1. Frase 2. Frase 3. Potete visitare i nostri lavori su www.fablabperugia.it/portfolio"},{"nome":"Design Office","contatto":"Sara Neri (titolare)","citta":"Fermo (FM)","motivo":"Frase breve.","email_subject":"Oggetto","email_body":"Frase 1. Frase 2. Frase 3. Potete visitare i nostri lavori su www.fablabperugia.it/portfolio"}]`;
   } else {
-    prompt = `Email di presentazione Fablab Perugia per "${prospect.nome}" (${prospect.contatto}). Motivo: ${prospect.motivo}. Servizio: ${servizio}. Tono: ${tono}.
-Rispondi SOLO con JSON oggetto, zero testo extra:
-{"email_subject":"...","email_body":"..."}`;
+    prompt = `Email breve Fablab Perugia per "${prospect.nome}". Servizio: ${servizio}. Tono: ${tono}. Max 3 frasi + concludi SEMPRE con: "Potete visitare i nostri lavori su www.fablabperugia.it/portfolio"
+Rispondi SOLO con questo JSON:
+{"email_subject":"Oggetto email","email_body":"Frase 1. Frase 2. Frase 3. Potete visitare i nostri lavori su www.fablabperugia.it/portfolio"}`;
   }
 
   try {
@@ -43,10 +44,7 @@ Rispondi SOLO con JSON oggetto, zero testo extra:
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2000,
-        }
+        generationConfig: { temperature: 0.7, maxOutputTokens: 4000 }
       }),
     });
 
@@ -59,23 +57,19 @@ Rispondi SOLO con JSON oggetto, zero testo extra:
       });
     }
 
-    const raw = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
-    
-    // Extract first valid JSON array or object
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const raw = parts.map(p => p.text || "").join("");
+
+    const arrayMatch = raw.match(/\[[\s\S]*?\]/);
+    const objMatch = raw.match(/\{[\s\S]*?\}/);
+
     let parsed = null;
-    const arrayMatch = raw.match(/\[[\s\S]*\]/);
-    const objMatch = raw.match(/\{[\s\S]*\}/);
-    
-    if (azione === "cerca" && arrayMatch) {
-      parsed = JSON.parse(arrayMatch[0]);
-    } else if (azione === "rigenera" && objMatch) {
-      parsed = JSON.parse(objMatch[0]);
-    } else if (arrayMatch) {
-      parsed = JSON.parse(arrayMatch[0]);
-    } else if (objMatch) {
-      parsed = JSON.parse(objMatch[0]);
-    } else {
-      return new Response(JSON.stringify({ error: "Nessun JSON trovato nella risposta: " + raw.slice(0, 300) }), {
+    try {
+      if (azione === "cerca" && arrayMatch) parsed = JSON.parse(arrayMatch[0]);
+      else if (objMatch) parsed = JSON.parse(objMatch[0]);
+      else if (arrayMatch) parsed = JSON.parse(arrayMatch[0]);
+    } catch(pe) {
+      return new Response(JSON.stringify({ error: "Parse error: " + raw.slice(0, 400) }), {
         status: 500,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
