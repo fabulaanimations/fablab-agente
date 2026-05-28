@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agente Clienti — Fablab Perugia</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f3ee;
+      --surface: #ffffff;
+      --surface2: #eceae4;
+      --border: #d8d4cc;
+      --text: #1a1916;
+      --text-muted: #7a766e;
+      --accent: #c8431a;
+      --accent-light: #fdf0ec;
+      --green: #1a6e3c;
+      --green-light: #edf5f0;
+      --mono: 'DM Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    header {
+      background: var(--text);
+      color: #fff;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    header .logo {
+      font-family: var(--mono);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      opacity: 0.6;
+      text-transform: uppercase;
+    }
+
+    header h1 {
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+    }
+
+    header .sep { opacity: 0.3; margin: 0 0.25rem; }
+
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem;
+    }
+
+    .intro {
+      margin-bottom: 2rem;
+    }
+
+    .intro h2 {
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.4rem;
+    }
+
+    .intro p {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .controls {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-family: var(--mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .field select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--bg);
+      font-family: var(--sans);
+      font-size: 14px;
+      color: var(--text);
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a766e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      cursor: pointer;
+    }
+
+    .field select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 13px;
+      background: var(--text);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #991b1b;
+      margin-bottom: 1.5rem;
+    }
+
+    .results { display: none; flex-direction: column; gap: 1.25rem; }
+
+    .prospect-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      animation: fadeUp 0.3s ease forwards;
+      opacity: 0;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-header {
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .avatar {
+      width: 44px; height: 44px; min-width: 44px;
+      border-radius: 50%;
+      background: var(--accent-light);
+      color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .card-meta { flex: 1; }
+    .card-meta .nome { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+    .card-meta .sub { font-size: 13px; color: var(--text-muted); }
+
+    .badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: var(--green-light);
+      color: var(--green);
+    }
+
+    .card-body { padding: 1.25rem 1.5rem; }
+
+    .motivo-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .motivo-text {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text);
+      margin-bottom: 1.25rem;
+    }
+
+    .email-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .email-subject {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .email-subject span {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .email-body {
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 9px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-family: var(--sans);
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-secondary:hover { background: var(--surface2); }
+
+    .btn-accent {
+      background: var(--accent-light);
+      border-color: transparent;
+      color: var(--accent);
+    }
+
+    .btn-accent:hover { background: #fde0d6; }
+
+    .loading-state {
+      display: none;
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .loading-state .dots::after {
+      content: '';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+
+    @keyframes dots {
+      0%   { content: ''; }
+      25%  { content: '.'; }
+      50%  { content: '..'; }
+      75%  { content: '...'; }
+    }
+
+    @media (max-width: 600px) {
+      .controls-grid { grid-template-columns: 1fr; }
+      header { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Fablab Perugia</div>
+    <h1>Agente Clienti <span class="sep">·</span> Prospect Finder</h1>
+  </div>
+</header>
+
+<main>
+  <div class="intro">
+    <h2>Trova nuovi clienti</h2>
+    <p>Seleziona il servizio, il tipo di cliente e la zona. L'agente genera prospect qualificati con email di presentazione pronte all'uso.</p>
+  </div>
+
+  <div class="controls">
+    <div class="controls-grid">
+      <div class="field">
+        <label>Servizio da promuovere</label>
+        <select id="servizio">
+          <option value="plastici architettonici">Plastici architettonici</option>
+          <option value="stampa 3D">Stampa 3D</option>
+          <option value="taglio laser">Taglio laser</option>
+          <option value="rendering 3D">Rendering 3D</option>
+          <option value="fresatura CNC">Fresatura CNC</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Tipo di cliente</label>
+        <select id="tipo">
+          <option value="studio di architettura">Studi di architettura</option>
+          <option value="azienda manifatturiera">Aziende manifatturiere</option>
+          <option value="agenzia immobiliare">Agenzie immobiliari</option>
+          <option value="azienda di design industriale">Design industriale</option>
+          <option value="comune o ente pubblico">Enti pubblici / Comuni</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Zona geografica</label>
+        <select id="zona">
+          <option value="Umbria">Umbria</option>
+          <option value="Toscana">Toscana</option>
+          <option value="Marche">Marche</option>
+          <option value="Lazio">Lazio</option>
+          <option value="Centro Italia">Centro Italia</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Tono dell'email</label>
+        <select id="tono">
+          <option value="professionale e diretto">Professionale e diretto</option>
+          <option value="cordiale e collaborativo">Cordiale e collaborativo</option>
+          <option value="tecnico e dettagliato">Tecnico e dettagliato</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-cerca" onclick="cercaProspect()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      Cerca prospect e genera email
+    </button>
+  </div>
+
+  <div class="error-box" id="errore"></div>
+  <div class="loading-state" id="loading">L'agente sta cercando prospect<span class="dots"></span></div>
+  <div class="results" id="results"></div>
+</main>
+
+<script>
+  let prospectData = [];
+
+  async function cercaProspect() {
+    const servizio = document.getElementById('servizio').value;
+    const tipo = document.getElementById('tipo').value;
+    const zona = document.getElementById('zona').value;
+    const tono = document.getElementById('tono').value;
+
+    document.getElementById('errore').style.display = 'none';
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('btn-cerca').disabled = true;
+    document.getElementById('btn-cerca').innerHTML = '<div class="spinner"></div> Ricerca in corso...';
+
+    try {
+      const res = await fetch('/api/agente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ servizio, tipo, zona, tono, azione: 'cerca' })
+      });
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      prospectData = data.result;
+      renderProspects(prospectData);
+    } catch (e) {
+      const el = document.getElementById('errore');
+      el.style.display = 'block';
+      el.textContent = 'Errore: ' + e.message;
+    }
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('btn-cerca').disabled = false;
+    document.getElementById('btn-cerca').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Cerca prospect e genera email';
+  }
+
+  function renderProspects(prospects) {
+    const container = document.getElementById('results');
+    container.innerHTML = '';
+    container.style.display = 'flex';
+
+    prospects.forEach((p, i) => {
+      const initials = p.nome.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+      const card = document.createElement('div');
+      card.className = 'prospect-card';
+      card.style.animationDelay = (i * 0.08) + 's';
+      card.innerHTML = `
+        <div class="card-header">
+          <div class="avatar">${initials}</div>
+          <div class="card-meta">
+            <div class="nome">${p.nome}</div>
+            <div class="sub">${p.contatto} &nbsp;·&nbsp; ${p.citta}</div>
+          </div>
+          <span class="badge">Prospect ${i + 1}</span>
+        </div>
+        <div class="card-body">
+          <div class="motivo-label">Perché contattarli</div>
+          <div class="motivo-text">${p.motivo}</div>
+          <div class="email-box" id="emailbox-${i}">
+            <div class="email-subject">Oggetto: <span>${p.email_subject}</span></div>
+            <div class="email-body">${p.email_body}</div>
+          </div>
+          <div class="card-actions">
+            <button class="btn-secondary" onclick="copyEmail(${i})">Copia email</button>
+            <button class="btn-secondary btn-accent" onclick="rigeneraEmail(${i})">Rigenera email</button>
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function copyEmail(i) {
+    const p = prospectData[i];
+    navigator.clipboard.writeText(`Oggetto: ${p.email_subject}\n\n${p.email_body}`);
+    alert('Email copiata negli appunti!');
+  }
+
+  async function rigeneraEmail(i) {
+    const p = prospectData[i];
+    const servizio = document.getElementById('servizio').value;
+    const tono = document.getElementById('tono').value;
+    const box = document.getElementById('emailbox-' + i);
+    box.style.opacity = '0.4';
+
+    try {
+      const res = await fetch('/api/agente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ servizio, tono, azione: 'rigenera', prospect: p })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      prospectData[i].email_subject = data.result.email_subject;
+      prospectData[i].email_body = data.result.email_body;
+      box.innerHTML = `
+        <div class="email-subject">Oggetto: <span>${data.result.email_subject}</span></div>
+        <div class="email-body">${data.result.email_body}</div>
+      `;
+    } catch (e) {
+      alert('Errore: ' + e.message);
+    }
+
+    box.style.opacity = '1';
+  }
+</script>
+</body>
+</html>
