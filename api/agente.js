@@ -31,7 +31,7 @@ Genera 4 prospect realistici (nomi inventati ma plausibili) di tipo "${tipo}" ne
 
 Rispondi ESCLUSIVAMENTE con un array JSON valido. Niente testo, niente backtick, niente markdown. Solo il JSON grezzo:
 [{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."},{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."},{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."},{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."}]`;
-  } else if (azione === "rigenera") {
+  } else {
     prompt = `Scrivi una nuova email di presentazione per Fablab Perugia diretta a "${prospect.nome}" (${prospect.contatto}). Motivo: ${prospect.motivo}. Servizio: ${servizio}. Tono: ${tono}. Rispondi ESCLUSIVAMENTE con JSON grezzo senza backtick: {"email_subject":"...","email_body":"..."}`;
   }
 
@@ -47,7 +47,8 @@ Rispondi ESCLUSIVAMENTE con un array JSON valido. Niente testo, niente backtick,
           temperature: 0.7,
           maxOutputTokens: 2000,
           responseMimeType: "application/json"
-        }
+        },
+        thinkingConfig: { thinkingBudget: 0 }
       }),
     });
 
@@ -71,7 +72,7 @@ Rispondi ESCLUSIVAMENTE con un array JSON valido. Niente testo, niente backtick,
       if (match) {
         parsed = JSON.parse(match[0]);
       } else {
-        return new Response(JSON.stringify({ error: "Risposta non valida da Gemini: " + clean.slice(0, 200) }), {
+        return new Response(JSON.stringify({ error: "Risposta non valida: " + clean.slice(0, 300) }), {
           status: 500,
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
         });
