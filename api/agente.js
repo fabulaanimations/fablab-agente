@@ -29,19 +29,10 @@ export default async function handler(req) {
 
 Genera 4 prospect realistici (nomi inventati ma plausibili) di tipo "${tipo}" nella zona "${zona}" che potrebbero aver bisogno di "${servizio}".
 
-Rispondi SOLO con un array JSON valido, nessun testo prima o dopo, nessun backtick:
-[
-  {
-    "nome": "Nome azienda",
-    "contatto": "Nome Cognome (ruolo)",
-    "citta": "Città (provincia)",
-    "motivo": "Motivo specifico per cui potrebbero aver bisogno di ${servizio} (2 righe max)",
-    "email_subject": "Oggetto email accattivante",
-    "email_body": "Email di presentazione personalizzata, tono ${tono}, 4-5 frasi. Firma come Fablab Perugia."
-  }
-]`;
+Rispondi ESCLUSIVAMENTE con un array JSON valido. Niente testo, niente backtick, niente markdown. Solo il JSON grezzo:
+[{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."},{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."},{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."},{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."}]`;
   } else if (azione === "rigenera") {
-    prompt = `Scrivi una nuova email di presentazione per Fablab Perugia (laboratorio fabbricazione digitale: plastici architettonici, stampa 3D, taglio laser, rendering 3D, fresatura CNC) diretta a "${prospect.nome}" (${prospect.contatto}). Motivo del contatto: ${prospect.motivo}. Servizio: ${servizio}. Tono: ${tono}. Rispondi SOLO con JSON valido senza backtick: {"email_subject":"...","email_body":"..."}`;
+    prompt = `Scrivi una nuova email di presentazione per Fablab Perugia diretta a "${prospect.nome}" (${prospect.contatto}). Motivo: ${prospect.motivo}. Servizio: ${servizio}. Tono: ${tono}. Rispondi ESCLUSIVAMENTE con JSON grezzo senza backtick: {"email_subject":"...","email_body":"..."}`;
   }
 
   try {
@@ -52,11 +43,23 @@ Rispondi SOLO con un array JSON valido, nessun testo prima o dopo, nessun backti
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1500 }
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2000,
+          responseMimeType: "application/json"
+        }
       }),
     });
 
     const data = await res.json();
+
+    if (!res.ok) {
+      return new Response(JSON.stringify({ error: data.error?.message || "Errore Gemini" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+    }
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     const clean = text.replace(/```json|```/g, "").trim();
 
@@ -65,7 +68,14 @@ Rispondi SOLO con un array JSON valido, nessun testo prima o dopo, nessun backti
       parsed = JSON.parse(clean);
     } catch {
       const match = clean.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
-      parsed = match ? JSON.parse(match[0]) : null;
+      if (match) {
+        parsed = JSON.parse(match[0]);
+      } else {
+        return new Response(JSON.stringify({ error: "Risposta non valida da Gemini: " + clean.slice(0, 200) }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
     }
 
     return new Response(JSON.stringify({ result: parsed }), {
