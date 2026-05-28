@@ -25,14 +25,14 @@ export default async function handler(req) {
   let prompt;
 
   if (azione === "cerca") {
-    prompt = `Sei un agente commerciale esperto per Fablab Perugia, laboratorio di fabbricazione digitale che offre: plastici architettonici, stampa 3D, taglio laser, rendering 3D, fresatura CNC, progettazione grafica.
-
-Genera 4 prospect realistici (nomi inventati ma plausibili) di tipo "${tipo}" nella zona "${zona}" che potrebbero aver bisogno di "${servizio}".
-
-Rispondi ESCLUSIVAMENTE con un array JSON valido. Niente testo, niente backtick, niente markdown. Solo il JSON grezzo:
-[{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."},{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."},{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."},{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."}]`;
+    prompt = `Sei un agente commerciale per Fablab Perugia (plastici architettonici, stampa 3D, taglio laser, rendering 3D, fresatura CNC).
+Genera 4 prospect di tipo "${tipo}" in "${zona}" interessati a "${servizio}". Tono email: ${tono}.
+Rispondi SOLO con JSON array, zero testo extra:
+[{"nome":"...","contatto":"...","citta":"...","motivo":"...","email_subject":"...","email_body":"..."}]`;
   } else {
-    prompt = `Scrivi una nuova email di presentazione per Fablab Perugia diretta a "${prospect.nome}" (${prospect.contatto}). Motivo: ${prospect.motivo}. Servizio: ${servizio}. Tono: ${tono}. Rispondi ESCLUSIVAMENTE con JSON grezzo senza backtick: {"email_subject":"...","email_body":"..."}`;
+    prompt = `Email di presentazione Fablab Perugia per "${prospect.nome}" (${prospect.contatto}). Motivo: ${prospect.motivo}. Servizio: ${servizio}. Tono: ${tono}.
+Rispondi SOLO con JSON oggetto, zero testo extra:
+{"email_subject":"...","email_body":"..."}`;
   }
 
   try {
@@ -46,8 +46,7 @@ Rispondi ESCLUSIVAMENTE con un array JSON valido. Niente testo, niente backtick,
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 2000,
-          responseMimeType: "application/json"
-        },
+        }
       }),
     });
 
@@ -60,30 +59,32 @@ Rispondi ESCLUSIVAMENTE con un array JSON valido. Niente testo, niente backtick,
       });
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const clean = text.replace(/```json|```/g, "").trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(clean);
-    } catch {
-      const match = clean.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
-      if (match) {
-        parsed = JSON.parse(match[0]);
-      } else {
-        return new Response(JSON.stringify({ error: "Risposta non valida: " + clean.slice(0, 300) }), {
-          status: 500,
-          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-        });
-      }
+    const raw = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
+    
+    // Extract first valid JSON array or object
+    let parsed = null;
+    const arrayMatch = raw.match(/\[[\s\S]*\]/);
+    const objMatch = raw.match(/\{[\s\S]*\}/);
+    
+    if (azione === "cerca" && arrayMatch) {
+      parsed = JSON.parse(arrayMatch[0]);
+    } else if (azione === "rigenera" && objMatch) {
+      parsed = JSON.parse(objMatch[0]);
+    } else if (arrayMatch) {
+      parsed = JSON.parse(arrayMatch[0]);
+    } else if (objMatch) {
+      parsed = JSON.parse(objMatch[0]);
+    } else {
+      return new Response(JSON.stringify({ error: "Nessun JSON trovato nella risposta: " + raw.slice(0, 300) }), {
+        status: 500,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
     }
 
     return new Response(JSON.stringify({ result: parsed }), {
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
+
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), {
       status: 500,
