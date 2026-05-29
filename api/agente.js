@@ -1,11 +1,11 @@
-export const config = { runtime: "edge", maxDuration: 60 };
+export const config = { runtime: "edge" };
 
 function extractEmail(text) {
   const match = text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
   return match ? match[0] : null;
 }
 
-async function findEmail(nome, citta, tipo, serperKey) {
+async function findEmail(nome, citta, serperKey) {
   try {
     const query = `${nome} ${citta} email contatti`;
     const res = await fetch("https://google.serper.dev/search", {
@@ -24,7 +24,7 @@ async function findEmail(nome, citta, tipo, serperKey) {
   } catch { return null; }
 }
 
-async function callGemini(prompt, maxTokens, apiKey, retries = 3) {
+async function callGemini(prompt, maxTokens, apiKey, retries = 2) {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
@@ -33,15 +33,14 @@ async function callGemini(prompt, maxTokens, apiKey, retries = 3) {
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: maxTokens } }),
       });
       const data = await res.json();
-      // 503 = sovraccarico, riprova
       if (res.status === 503 || res.status === 429) {
-        if (attempt < retries - 1) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
+        if (attempt < retries - 1) { await new Promise(r => setTimeout(r, 1200)); continue; }
         throw new Error("Modello sovraccarico, riprova tra poco");
       }
       if (!res.ok) throw new Error(data.error?.message || "Errore Gemini");
       return (data.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
     } catch (e) {
-      if (attempt < retries - 1) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
+      if (attempt < retries - 1) { await new Promise(r => setTimeout(r, 1200)); continue; }
       throw e;
     }
   }
@@ -99,6 +98,19 @@ export default async function handler(req) {
       return new Response(JSON.stringify({ ok: true }), { headers });
     }
 
+    // CERCA EMAIL per un gruppo di prospect (chiamata separata dal frontend)
+    if (azione === "cerca_email") {
+      if (!SERPER_API_KEY) return new Response(JSON.stringify({ error: "SERPER_API_KEY non configurata" }), { status: 500, headers });
+      const { items } = body; // array di {nome, citta}
+      const bounces = await getBounces();
+      const results = await Promise.all(items.map(async (it) => {
+        const email = await findEmail(it.nome, it.citta, SERPER_API_KEY);
+        const isBounced = email ? bounces.includes(email.toLowerCase()) : false;
+        return { nome: it.nome, email: email || null, bounced: isBounced };
+      }));
+      return new Response(JSON.stringify({ results }), { headers });
+    }
+
     // RIGENERA EMAIL
     if (azione === "rigenera") {
       const { servizio, tono, prospect } = body;
@@ -110,8 +122,7 @@ Rispondi SOLO con questo JSON:
       return new Response(JSON.stringify({ result: objMatch ? JSON.parse(objMatch[0]) : null }), { headers });
     }
 
-    // CERCA PROSPECT
-    if (!SERPER_API_KEY) return new Response(JSON.stringify({ error: "SERPER_API_KEY non configurata" }), { status: 500, headers });
+    // CERCA PROSPECT (solo generazione, niente email — veloce)
     const { servizio, tipo, zona, tono } = body;
     const prompt = `Sei agente commerciale Fablab Perugia (plastici architettonici, stampa 3D, taglio laser, rendering 3D, fresatura CNC).
 Genera 20 prospect REALI (nomi plausibili di studi/aziende) di tipo "${tipo}" in "${zona}" per "${servizio}".
@@ -128,21 +139,8 @@ Rispondi SOLO con JSON array, niente altro:
     try { prospects = JSON.parse(arrayMatch[0]); }
     catch(e) { return new Response(JSON.stringify({ error: "Parse error: " + e.message }), { status: 500, headers }); }
 
-    const bounces = await getBounces();
-
-    // Cerca email in batch da 5 per evitare timeout
-    const withEmails = [];
-    for (let i = 0; i < prospects.length; i += 5) {
-      const batch = prospects.slice(i, i + 5);
-      const results = await Promise.all(batch.map(async (p) => {
-        const email = await findEmail(p.nome, p.citta, tipo, SERPER_API_KEY);
-        const isBounced = email ? bounces.includes(email.toLowerCase()) : false;
-        return { ...p, email: email || null, bounced: isBounced };
-      }));
-      withEmails.push(...results);
-    }
-
-    return new Response(JSON.stringify({ result: withEmails }), { headers });
+    // restituisce i prospect SENZA email — le cerca il frontend in chiamate separate
+    return new Response(JSON.stringify({ result: prospects.map(p => ({ ...p, email: undefined, bounced: false })) }), { headers });
 
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
