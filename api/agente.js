@@ -123,15 +123,17 @@ Rispondi SOLO con questo JSON:
     }
 
     // CERCA PROSPECT (solo generazione, niente email — veloce)
-    const { servizio, tipo, zona, tono } = body;
-    const prompt = `Sei agente commerciale Fablab Perugia (plastici architettonici, stampa 3D, taglio laser, rendering 3D, fresatura CNC).
-Genera 20 prospect REALI (nomi plausibili di studi/aziende) di tipo "${tipo}" in "${zona}" per "${servizio}".
-Ogni motivo max 1 frase. Ogni email_body max 3 frasi + concludi SEMPRE con: "Potete visitare i nostri lavori su www.fablabperugia.it/portfolio"
-Tono email: ${tono}.
-Rispondi SOLO con JSON array, niente altro:
-[{"nome":"Nome Studio","contatto":"Nome Cognome (ruolo)","citta":"Città (provincia)","motivo":"Motivo breve.","email_subject":"Oggetto","email_body":"Frase 1. Frase 2. Frase 3. Potete visitare i nostri lavori su www.fablabperugia.it/portfolio"}]`;
+    const { servizio, tipo, zona, tono, esclusi } = body;
+    const listaEsclusi = Array.isArray(esclusi) && esclusi.length > 0
+      ? `\nNON includere questi (già trovati prima): ${esclusi.slice(0, 100).join(", ")}.`
+      : "";
+    const seed = Math.random().toString(36).slice(2, 8);
+    const prompt = `Sei agente commerciale Fablab Perugia. Genera 5 prospect REALI e DIVERSI (nomi plausibili di studi/aziende) di tipo "${tipo}" in "${zona}". Varia città e nomi ad ogni richiesta (seed: ${seed}).${listaEsclusi}
+Ogni motivo max 8 parole. Oggetto email max 6 parole.
+Rispondi SOLO con JSON array compatto, niente altro:
+[{"nome":"Nome Studio","contatto":"Nome Cognome (ruolo)","citta":"Città (prov)","motivo":"Breve motivo","email_subject":"Oggetto breve"}]`;
 
-    const raw = await callGemini(prompt, 8000, GEMINI_API_KEY);
+    const raw = await callGemini(prompt, 2000, GEMINI_API_KEY);
     const arrayMatch = raw.match(/\[[\s\S]*\]/);
     if (!arrayMatch) return new Response(JSON.stringify({ error: "Nessun JSON: " + raw.slice(0, 300) }), { status: 500, headers });
 
@@ -139,8 +141,20 @@ Rispondi SOLO con JSON array, niente altro:
     try { prospects = JSON.parse(arrayMatch[0]); }
     catch(e) { return new Response(JSON.stringify({ error: "Parse error: " + e.message }), { status: 500, headers }); }
 
-    // restituisce i prospect SENZA email — le cerca il frontend in chiamate separate
-    return new Response(JSON.stringify({ result: prospects.map(p => ({ ...p, email: undefined, bounced: false })) }), { headers });
+    // Genera email_body con template veloce (no chiamata AI, evita timeout)
+    const toneMap = {
+      "professionale e diretto": "Gentile",
+      "cordiale e collaborativo": "Buongiorno",
+      "tecnico e dettagliato": "Spett.le"
+    };
+    const saluto = toneMap[tono] || "Gentile";
+    const result = prospects.map(p => {
+      const nomeContatto = p.contatto ? p.contatto.split('(')[0].trim() : p.nome;
+      const email_body = `${saluto} ${nomeContatto},\n\nsiamo Fablab Perugia, laboratorio di fabbricazione digitale specializzato in ${servizio}. ${p.motivo} Saremmo lieti di mettere a disposizione la nostra esperienza per i vostri progetti.\n\nPotete visitare i nostri lavori su www.fablabperugia.it/portfolio\n\nCordiali saluti,\nFablab Perugia`;
+      return { ...p, email_body, email: undefined, bounced: false };
+    });
+
+    return new Response(JSON.stringify({ result }), { headers });
 
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
