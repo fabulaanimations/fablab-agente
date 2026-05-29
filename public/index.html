@@ -10,16 +10,17 @@
     :root {
       --bg: #f5f3ee; --surface: #ffffff; --surface2: #eceae4; --border: #d8d4cc;
       --text: #1a1916; --text-muted: #7a766e; --accent: #c8431a; --accent-light: #fdf0ec;
-      --green: #1a6e3c; --green-light: #edf5f0; --mono: 'DM Mono', monospace; --sans: 'DM Sans', sans-serif;
+      --green: #1a6e3c; --green-light: #edf5f0; --blue: #1a4a8a; --blue-light: #edf2fc;
+      --red: #991b1b; --red-light: #fef2f2;
+      --mono: 'DM Mono', monospace; --sans: 'DM Sans', sans-serif;
     }
     body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
-    header { background: var(--text); color: #fff; padding: 1.25rem 2rem; display: flex; align-items: center; gap: 1rem; }
+    header { background: var(--text); color: #fff; padding: 1.25rem 2rem; display: flex; align-items: center; justify-content: space-between; }
     header .logo { font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em; opacity: 0.6; text-transform: uppercase; }
     header h1 { font-size: 16px; font-weight: 500; }
     main { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; }
-    .intro { margin-bottom: 2rem; }
     .intro h2 { font-size: 26px; font-weight: 600; letter-spacing: -0.03em; margin-bottom: 0.4rem; }
-    .intro p { font-size: 15px; color: var(--text-muted); line-height: 1.6; }
+    .intro p { font-size: 15px; color: var(--text-muted); line-height: 1.6; margin-bottom: 2rem; }
     .controls { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
     .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
     .field label { display: block; font-size: 11px; font-family: var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
@@ -28,40 +29,51 @@
     .btn-primary { width: 100%; padding: 13px; background: var(--text); color: #fff; border: none; border-radius: 8px; font-family: var(--sans); font-size: 15px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .btn-primary:hover { opacity: 0.85; }
     .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-send-all { width: 100%; padding: 13px; background: var(--green); color: #fff; border: none; border-radius: 8px; font-family: var(--sans); font-size: 15px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; display: none; align-items: center; justify-content: center; gap: 8px; margin-bottom: 1rem; }
+    .btn-send-all:hover { opacity: 0.85; }
+    .btn-send-all:disabled { opacity: 0.45; cursor: not-allowed; }
     .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .error-box { display: none; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #991b1b; margin-bottom: 1.5rem; }
+    .error-box { display: none; background: var(--red-light); border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--red); margin-bottom: 1.5rem; }
     .results { display: none; flex-direction: column; gap: 1.25rem; }
-    .prospect-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; animation: fadeUp 0.3s ease forwards; opacity: 0; }
+    .prospect-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; animation: fadeUp 0.3s ease forwards; opacity: 0; transition: opacity 0.4s; }
+    .prospect-card.contacted { opacity: 0.4 !important; }
+    .prospect-card.bounced-card { opacity: 0.3 !important; border-color: #fca5a5; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .card-header { padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid var(--border); }
-    .avatar { width: 44px; height: 44px; min-width: 44px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 13px; font-weight: 500; }
+    .card-checkbox { width: 18px; height: 18px; min-width: 18px; cursor: pointer; accent-color: var(--green); }
+    .avatar { width: 40px; height: 40px; min-width: 40px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; font-weight: 500; }
+    .avatar.bounced { background: var(--red-light); color: var(--red); }
     .card-meta { flex: 1; }
     .card-meta .nome { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
     .card-meta .sub { font-size: 13px; color: var(--text-muted); }
-    .badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 20px; background: var(--green-light); color: var(--green); }
-    .badge-no-email { background: #fef9ec; color: #92650a; }
+    .badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 20px; }
+    .badge-new { background: var(--green-light); color: var(--green); }
+    .badge-seen { background: #fef9ec; color: #92650a; }
+    .badge-sent { background: var(--blue-light); color: var(--blue); }
+    .badge-sending { background: #f0f0f0; color: #555; }
+    .badge-bounced { background: var(--red-light); color: var(--red); }
     .card-body { padding: 1.25rem 1.5rem; }
-    .motivo-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
     .motivo-text { font-size: 13px; line-height: 1.6; color: var(--text); margin-bottom: 1rem; }
     .email-trovata { display: flex; align-items: center; gap: 8px; background: var(--green-light); border-radius: 7px; padding: 8px 12px; margin-bottom: 1rem; font-size: 13px; }
     .email-trovata a { color: var(--green); font-weight: 500; text-decoration: none; }
-    .email-trovata a:hover { text-decoration: underline; }
     .email-non-trovata { background: #fef9ec; border-radius: 7px; padding: 8px 12px; margin-bottom: 1rem; font-size: 13px; color: #92650a; }
+    .email-bounced-box { background: var(--red-light); border-radius: 7px; padding: 8px 12px; margin-bottom: 1rem; font-size: 13px; color: var(--red); }
     .email-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
     .email-subject { font-family: var(--mono); font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
     .email-subject span { color: var(--text); font-weight: 500; }
     .email-body { font-size: 13px; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
-    .card-actions { display: flex; gap: 8px; }
-    .btn-secondary { flex: 1; padding: 9px; background: transparent; border: 1px solid var(--border); border-radius: 7px; font-family: var(--sans); font-size: 13px; color: var(--text); cursor: pointer; transition: background 0.15s; }
-    .btn-secondary:hover { background: var(--surface2); }
-    .btn-accent { background: var(--accent-light); border-color: transparent; color: var(--accent); }
-    .btn-accent:hover { background: #fde0d6; }
+    .card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-sm { flex: 1; min-width: 100px; padding: 9px; background: transparent; border: 1px solid var(--border); border-radius: 7px; font-family: var(--sans); font-size: 13px; color: var(--text); cursor: pointer; transition: background 0.15s; }
+    .btn-sm:hover { background: var(--surface2); }
+    .btn-sm-accent { background: var(--accent-light); border-color: transparent; color: var(--accent); }
+    .btn-sm-accent:hover { background: #fde0d6; }
     .loading-state { display: none; text-align: center; padding: 3rem; color: var(--text-muted); font-size: 14px; }
     .progress-bar { width: 200px; height: 3px; background: var(--border); border-radius: 2px; margin: 12px auto 0; overflow: hidden; }
-    .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; animation: progress 8s ease-in-out forwards; }
+    .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; animation: progress 12s ease-in-out forwards; }
     @keyframes progress { from { width: 0%; } to { width: 95%; } }
     .stats { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-bottom: 1rem; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; display: none; }
+    .queue-status { display: none; background: var(--blue-light); border: 1px solid #c0d0f0; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--blue); margin-bottom: 1rem; }
     @media (max-width: 600px) { .controls-grid { grid-template-columns: 1fr; } header { padding: 1rem; } }
   </style>
 </head>
@@ -75,8 +87,9 @@
 <main>
   <div class="intro">
     <h2>Trova nuovi clienti</h2>
-    <p>Seleziona il servizio, il tipo di cliente e la zona. L'agente genera 20 prospect con email reale cercata online.</p>
+    <p>Genera 20 prospect con email reale, seleziona chi contattare e invia in automatico ogni 45 minuti. Le email rimbalzate vengono rimosse automaticamente.</p>
   </div>
+
   <div class="controls">
     <div class="controls-grid">
       <div class="field">
@@ -123,18 +136,70 @@
       Cerca 20 prospect e genera email
     </button>
   </div>
+
   <div class="error-box" id="errore"></div>
   <div class="loading-state" id="loading">
     <div>Ricerca in corso — genero prospect e cerco email reali online...</div>
     <div class="progress-bar"><div class="progress-fill"></div></div>
   </div>
   <div class="stats" id="stats"></div>
+  <div class="queue-status" id="queue-status"></div>
+  <button class="btn-send-all" id="btn-send-all" onclick="inviaSelezionati()">
+    📨 Invia email ai selezionati (ogni 45 min)
+  </button>
   <div class="results" id="results"></div>
 </main>
 
 <script>
   let prospectData = [];
+  let sendQueue = [];
+  let sendTimer = null;
+  let sendIndex = 0;
+  let bouncedEmails = new Set();
+
   const seen = JSON.parse(localStorage.getItem('seen_prospects') || '[]');
+  const contacted = JSON.parse(localStorage.getItem('contacted_prospects') || '[]');
+  function saveContacted() { localStorage.setItem('contacted_prospects', JSON.stringify(contacted)); }
+
+  // Controlla bounce ogni 5 minuti
+  async function checkBounces() {
+    try {
+      const res = await fetch('/api/agente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ azione: 'check_bounces' })
+      });
+      const data = await res.json();
+      if (data.bounces && data.bounces.length > 0) {
+        const newBounces = data.bounces.filter(e => !bouncedEmails.has(e.toLowerCase()));
+        newBounces.forEach(e => bouncedEmails.add(e.toLowerCase()));
+        if (newBounces.length > 0 && prospectData.length > 0) {
+          applyBouncesToUI(newBounces);
+        }
+      }
+    } catch {}
+  }
+
+  function applyBouncesToUI(newBounces) {
+    prospectData.forEach((p, i) => {
+      if (p.email && newBounces.includes(p.email.toLowerCase())) {
+        prospectData[i].bounced = true;
+        const card = document.getElementById(`card-${i}`);
+        if (card) {
+          card.classList.add('bounced-card');
+          document.getElementById(`badge-${i}`).innerHTML = `<span class="badge badge-bounced">✗ Rimbalzata</span>`;
+          const chk = document.getElementById(`chk-${i}`);
+          if (chk) { chk.checked = false; chk.disabled = true; }
+          const emailDiv = card.querySelector('.email-trovata');
+          if (emailDiv) emailDiv.outerHTML = `<div class="email-bounced-box">❌ Email rimbalzata — rimossa dalla lista</div>`;
+        }
+      }
+    });
+    updateSendButton();
+  }
+
+  setInterval(checkBounces, 5 * 60 * 1000);
+  checkBounces();
 
   async function cercaProspect() {
     const servizio = document.getElementById('servizio').value;
@@ -146,8 +211,11 @@
     document.getElementById('loading').style.display = 'block';
     document.getElementById('results').style.display = 'none';
     document.getElementById('stats').style.display = 'none';
+    document.getElementById('btn-send-all').style.display = 'none';
+    document.getElementById('queue-status').style.display = 'none';
     document.getElementById('btn-cerca').disabled = true;
     document.getElementById('btn-cerca').innerHTML = '<div class="spinner"></div> Ricerca in corso...';
+    if (sendTimer) { clearTimeout(sendTimer); sendTimer = null; }
 
     try {
       const res = await fetch('/api/agente', {
@@ -158,23 +226,24 @@
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
-      prospectData = data.result;
+      prospectData = data.result.map(p => ({
+        ...p,
+        already_contacted: contacted.includes(p.nome),
+        selected: false,
+        bounced: p.bounced || (p.email && bouncedEmails.has(p.email.toLowerCase()))
+      }));
 
-      // marca i già visti
-      prospectData.forEach(p => {
-        p.already_seen = seen.includes(p.nome);
-      });
-
-      const conEmail = prospectData.filter(p => p.email).length;
+      const conEmail = prospectData.filter(p => p.email && !p.bounced).length;
+      const bounceCount = prospectData.filter(p => p.bounced).length;
       const statsEl = document.getElementById('stats');
       statsEl.style.display = 'block';
-      statsEl.textContent = `${prospectData.length} prospect trovati · ${conEmail} con email reale · ${prospectData.length - conEmail} senza email`;
+      statsEl.textContent = `${prospectData.length} prospect · ${conEmail} con email valida · ${bounceCount} rimbalzate · ${prospectData.filter(p => p.already_contacted).length} già contattati`;
 
       renderProspects(prospectData);
+      document.getElementById('btn-send-all').style.display = 'flex';
     } catch (e) {
-      const el = document.getElementById('errore');
-      el.style.display = 'block';
-      el.textContent = 'Errore: ' + e.message;
+      document.getElementById('errore').style.display = 'block';
+      document.getElementById('errore').textContent = 'Errore: ' + e.message;
     }
 
     document.getElementById('loading').style.display = 'none';
@@ -190,29 +259,37 @@
     prospects.forEach((p, i) => {
       const initials = p.nome.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
       const card = document.createElement('div');
-      card.className = 'prospect-card';
-      card.style.animationDelay = (i * 0.04) + 's';
-      if (p.already_seen) card.style.opacity = '0.6';
+      card.className = 'prospect-card' + (p.already_contacted ? ' contacted' : '') + (p.bounced ? ' bounced-card' : '');
+      card.id = `card-${i}`;
+      card.style.animationDelay = (i * 0.03) + 's';
 
-      const emailHtml = p.email
-        ? `<div class="email-trovata">✅ Email trovata: <a href="mailto:${p.email}">${p.email}</a></div>`
-        : `<div class="email-non-trovata">⚠️ Email non trovata online</div>`;
+      let emailHtml;
+      if (p.bounced) {
+        emailHtml = `<div class="email-bounced-box">❌ Email rimbalzata — rimossa dalla lista</div>`;
+      } else if (p.email) {
+        emailHtml = `<div class="email-trovata">✅ <a href="mailto:${p.email}">${p.email}</a></div>`;
+      } else {
+        emailHtml = `<div class="email-non-trovata">⚠️ Email non trovata</div>`;
+      }
 
-      const seenBadge = p.already_seen
-        ? `<span class="badge badge-no-email">Già visto</span>`
-        : `<span class="badge">Prospect ${i + 1}</span>`;
+      let badgeHtml;
+      if (p.bounced) badgeHtml = `<span class="badge badge-bounced">✗ Rimbalzata</span>`;
+      else if (p.already_contacted) badgeHtml = `<span class="badge badge-sent">✓ Inviata</span>`;
+      else badgeHtml = `<span class="badge badge-new">Nuovo</span>`;
+
+      const checkDisabled = p.already_contacted || !p.email || p.bounced ? 'disabled' : '';
 
       card.innerHTML = `
         <div class="card-header">
-          <div class="avatar">${initials}</div>
+          <input type="checkbox" class="card-checkbox" id="chk-${i}" ${checkDisabled} onchange="toggleSelect(${i})" />
+          <div class="avatar ${p.bounced ? 'bounced' : ''}">${initials}</div>
           <div class="card-meta">
             <div class="nome">${p.nome}</div>
             <div class="sub">${p.contatto} &nbsp;·&nbsp; ${p.citta}</div>
           </div>
-          ${seenBadge}
+          <span id="badge-${i}">${badgeHtml}</span>
         </div>
         <div class="card-body">
-          <div class="motivo-label">Perché contattarli</div>
           <div class="motivo-text">${p.motivo}</div>
           ${emailHtml}
           <div class="email-box" id="emailbox-${i}">
@@ -220,9 +297,8 @@
             <div class="email-body">${p.email_body}</div>
           </div>
           <div class="card-actions">
-            <button class="btn-secondary" onclick="copyEmail(${i})">Copia email</button>
-            <button class="btn-secondary btn-accent" onclick="rigeneraEmail(${i})">Rigenera email</button>
-            <button class="btn-secondary" onclick="markSeen(${i}, this)" style="${p.already_seen ? 'opacity:0.5' : ''}">✓ Già contattato</button>
+            <button class="btn-sm btn-sm-accent" onclick="copyEmail(${i})">Copia email</button>
+            <button class="btn-sm" onclick="rigeneraEmail(${i})">Rigenera</button>
           </div>
         </div>
       `;
@@ -230,23 +306,87 @@
     });
   }
 
-  function markSeen(i, btn) {
-    const nome = prospectData[i].nome;
-    if (!seen.includes(nome)) {
-      seen.push(nome);
-      localStorage.setItem('seen_prospects', JSON.stringify(seen));
+  function toggleSelect(i) {
+    prospectData[i].selected = document.getElementById(`chk-${i}`).checked;
+    updateSendButton();
+  }
+
+  function updateSendButton() {
+    const selected = prospectData.filter(p => p.selected && p.email && !p.already_contacted && !p.bounced);
+    const btn = document.getElementById('btn-send-all');
+    btn.textContent = selected.length > 0
+      ? `📨 Invia email a ${selected.length} prospect selezionati (ogni 45 min)`
+      : `📨 Invia email ai selezionati (ogni 45 min)`;
+  }
+
+  async function inviaSelezionati() {
+    sendQueue = prospectData.map((p, i) => ({ ...p, index: i })).filter(p => p.selected && p.email && !p.already_contacted && !p.bounced);
+    if (sendQueue.length === 0) { alert('Selezionate almeno un prospect con email valida!'); return; }
+    sendIndex = 0;
+    document.getElementById('btn-send-all').disabled = true;
+    inviaNext();
+  }
+
+  async function inviaNext() {
+    if (sendIndex >= sendQueue.length) {
+      document.getElementById('queue-status').style.display = 'block';
+      document.getElementById('queue-status').textContent = `✅ Tutte le ${sendQueue.length} email sono state inviate!`;
+      document.getElementById('btn-send-all').disabled = false;
+      return;
     }
-    prospectData[i].already_seen = true;
-    btn.closest('.prospect-card').style.opacity = '0.5';
-    btn.textContent = '✓ Contattato';
-    btn.style.opacity = '0.5';
+
+    const p = sendQueue[sendIndex];
+    document.getElementById('queue-status').style.display = 'block';
+    document.getElementById(`badge-${p.index}`).innerHTML = `<span class="badge badge-sending">⏳ Invio...</span>`;
+
+    try {
+      const res = await fetch('/api/agente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ azione: 'invia', to: p.email, subject: p.email_subject, emailBody: p.email_body })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      prospectData[p.index].already_contacted = true;
+      prospectData[p.index].selected = false;
+      if (!contacted.includes(p.nome)) contacted.push(p.nome);
+      saveContacted();
+
+      document.getElementById(`card-${p.index}`).classList.add('contacted');
+      document.getElementById(`chk-${p.index}`).checked = false;
+      document.getElementById(`chk-${p.index}`).disabled = true;
+      document.getElementById(`badge-${p.index}`).innerHTML = `<span class="badge badge-sent">✓ Inviata</span>`;
+
+    } catch(e) {
+      document.getElementById(`badge-${p.index}`).innerHTML = `<span class="badge badge-bounced">✗ Errore</span>`;
+    }
+
+    sendIndex++;
+
+    if (sendIndex < sendQueue.length) {
+      const DELAY = 45 * 60 * 1000;
+      let remaining_sec = 45 * 60;
+      document.getElementById('queue-status').textContent = `✅ Inviata a ${p.nome}. Prossima (${sendQueue[sendIndex].nome}) tra 45:00...`;
+
+      const countdown = setInterval(() => {
+        remaining_sec--;
+        const m = String(Math.floor(remaining_sec / 60)).padStart(2, '0');
+        const s = String(remaining_sec % 60).padStart(2, '0');
+        document.getElementById('queue-status').textContent = `⏳ Prossima email (${sendQueue[sendIndex].nome}) tra ${m}:${s}...`;
+        if (remaining_sec <= 0) clearInterval(countdown);
+      }, 1000);
+
+      sendTimer = setTimeout(() => { clearInterval(countdown); inviaNext(); }, DELAY);
+    } else {
+      inviaNext();
+    }
   }
 
   function copyEmail(i) {
     const p = prospectData[i];
-    const emailTo = p.email ? `A: ${p.email}\n` : '';
-    navigator.clipboard.writeText(`${emailTo}Oggetto: ${p.email_subject}\n\n${p.email_body}`);
-    alert('Email copiata negli appunti!');
+    navigator.clipboard.writeText(`${p.email ? 'A: ' + p.email + '\n' : ''}Oggetto: ${p.email_subject}\n\n${p.email_body}`);
+    alert('Email copiata!');
   }
 
   async function rigeneraEmail(i) {
@@ -255,7 +395,6 @@
     const tono = document.getElementById('tono').value;
     const box = document.getElementById('emailbox-' + i);
     box.style.opacity = '0.4';
-
     try {
       const res = await fetch('/api/agente', {
         method: 'POST',
@@ -266,13 +405,8 @@
       if (data.error) throw new Error(data.error);
       prospectData[i].email_subject = data.result.email_subject;
       prospectData[i].email_body = data.result.email_body;
-      box.innerHTML = `
-        <div class="email-subject">Oggetto: <span>${data.result.email_subject}</span></div>
-        <div class="email-body">${data.result.email_body}</div>
-      `;
-    } catch (e) {
-      alert('Errore: ' + e.message);
-    }
+      box.innerHTML = `<div class="email-subject">Oggetto: <span>${data.result.email_subject}</span></div><div class="email-body">${data.result.email_body}</div>`;
+    } catch (e) { alert('Errore: ' + e.message); }
     box.style.opacity = '1';
   }
 </script>
