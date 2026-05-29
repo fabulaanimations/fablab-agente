@@ -14,11 +14,10 @@ async function findEmail(nome, citta, tipo, serperKey) {
         "Content-Type": "application/json",
         "X-API-KEY": serperKey,
       },
-      body: JSON.stringify({ q: query, gl: "it", hl: "it", num: 3 }),
+      body: JSON.stringify({ q: query, gl: "it", hl: "it", num: 5 }),
     });
     const data = await res.json();
 
-    // cerca email in snippet e sitelinks
     const texts = [];
     if (data.organic) {
       for (const r of data.organic) {
@@ -27,23 +26,13 @@ async function findEmail(nome, citta, tipo, serperKey) {
       }
     }
     if (data.knowledgeGraph?.description) texts.push(data.knowledgeGraph.description);
+    if (data.knowledgeGraph?.attributes) {
+      for (const v of Object.values(data.knowledgeGraph.attributes)) texts.push(v);
+    }
 
     for (const t of texts) {
       const email = extractEmail(t);
       if (email) return email;
-    }
-
-    // prova a fare fetch del primo risultato
-    if (data.organic?.[0]?.link) {
-      try {
-        const pageRes = await fetch(data.organic[0].link, {
-          headers: { "User-Agent": "Mozilla/5.0" },
-          signal: AbortSignal.timeout(4000),
-        });
-        const html = await pageRes.text();
-        const email = extractEmail(html);
-        if (email) return email;
-      } catch {}
     }
 
     return null;
@@ -72,8 +61,8 @@ export default async function handler(req) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   const SERPER_API_KEY = process.env.SERPER_API_KEY;
 
-  if (!GEMINI_API_KEY) return new Response(JSON.stringify({ error: "GEMINI_API_KEY non configurata" }), { status: 500 });
-  if (!SERPER_API_KEY) return new Response(JSON.stringify({ error: "SERPER_API_KEY non configurata" }), { status: 500 });
+  if (!GEMINI_API_KEY) return new Response(JSON.stringify({ error: "GEMINI_API_KEY non configurata" }), { status: 500, headers: { "Access-Control-Allow-Origin": "*" } });
+  if (!SERPER_API_KEY) return new Response(JSON.stringify({ error: "SERPER_API_KEY non configurata" }), { status: 500, headers: { "Access-Control-Allow-Origin": "*" } });
 
   // RIGENERA EMAIL
   if (azione === "rigenera") {
@@ -92,7 +81,7 @@ Rispondi SOLO con questo JSON:
       });
       const data = await res.json();
       const raw = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
-      const objMatch = raw.match(/\{[\s\S]*?\}/);
+      const objMatch = raw.match(/\{[\s\S]*\}/);
       const parsed = objMatch ? JSON.parse(objMatch[0]) : null;
       return new Response(JSON.stringify({ result: parsed }), {
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
@@ -104,7 +93,7 @@ Rispondi SOLO con questo JSON:
 
   // CERCA PROSPECT
   const prompt = `Sei agente commerciale Fablab Perugia (plastici architettonici, stampa 3D, taglio laser, rendering 3D, fresatura CNC).
-Genera 20 prospect REALI (nomi di studi/aziende che potrebbero esistere davvero) di tipo "${tipo}" in "${zona}" per "${servizio}".
+Genera 20 prospect REALI (nomi plausibili di studi/aziende) di tipo "${tipo}" in "${zona}" per "${servizio}".
 Ogni motivo max 1 frase. Ogni email_body max 3 frasi + concludi SEMPRE con: "Potete visitare i nostri lavori su www.fablabperugia.it/portfolio"
 Tono email: ${tono}.
 Rispondi SOLO con JSON array, niente altro:
@@ -135,7 +124,14 @@ Rispondi SOLO con JSON array, niente altro:
       });
     }
 
-    let prospects = JSON.parse(arrayMatch[0]);
+    let prospects;
+    try {
+      prospects = JSON.parse(arrayMatch[0]);
+    } catch(e) {
+      return new Response(JSON.stringify({ error: "Parse error: " + e.message }), {
+        status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+    }
 
     // Cerca email reali in parallelo con Serper
     const withEmails = await Promise.all(
