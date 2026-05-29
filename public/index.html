@@ -88,7 +88,7 @@
 <main>
   <div class="intro">
     <h2>Trova nuovi clienti</h2>
-    <p>Genera 20 prospect con email reale, seleziona chi contattare e invia in automatico ogni 45 minuti. Le email rimbalzate vengono rimosse automaticamente.</p>
+    <p>Genera 5 prospect con email reale, seleziona chi contattare e invia in automatico ogni 45 minuti. Le email rimbalzate vengono rimosse automaticamente.</p>
   </div>
 
   <div class="controls">
@@ -134,13 +134,13 @@
     </div>
     <button class="btn-primary" id="btn-cerca" onclick="cercaProspect()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      Cerca 20 prospect e genera email
+      Cerca 5 prospect e genera email
     </button>
   </div>
 
   <div class="error-box" id="errore"></div>
   <div class="loading-state" id="loading">
-    <div>Genero 20 prospect...</div>
+    <div>Genero 5 prospect...</div>
     <div class="progress-bar"><div class="progress-fill"></div></div>
   </div>
   <div class="stats" id="stats"></div>
@@ -159,7 +159,9 @@
   let bouncedEmails = new Set();
 
   const contacted = JSON.parse(localStorage.getItem('contacted_prospects') || '[]');
+  let visti = JSON.parse(localStorage.getItem('visti_prospects') || '[]');
   function saveContacted() { localStorage.setItem('contacted_prospects', JSON.stringify(contacted)); }
+  function saveVisti() { localStorage.setItem('visti_prospects', JSON.stringify(visti)); }
 
   async function checkBounces() {
     try {
@@ -209,9 +211,13 @@
     if (sendTimer) { clearTimeout(sendTimer); sendTimer = null; }
 
     try {
-      const res = await fetch('/api/agente', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ servizio, tipo, zona, tono, azione: 'cerca' }) });
+      const res = await fetch('/api/agente', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ servizio, tipo, zona, tono, azione: 'cerca', esclusi: visti }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+
+      // aggiungi i nuovi nomi alla lista dei visti
+      data.result.forEach(p => { if (!visti.includes(p.nome)) visti.push(p.nome); });
+      saveVisti();
 
       prospectData = data.result.map(p => ({
         ...p,
@@ -236,7 +242,7 @@
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('btn-cerca').disabled = false;
-    document.getElementById('btn-cerca').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Cerca 20 prospect e genera email';
+    document.getElementById('btn-cerca').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Cerca 5 prospect e genera email';
   }
 
   async function cercaEmailProgressive() {
