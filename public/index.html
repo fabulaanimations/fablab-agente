@@ -33,6 +33,7 @@
     .btn-send-all:hover { opacity: 0.85; }
     .btn-send-all:disabled { opacity: 0.45; cursor: not-allowed; }
     .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    .spinner-sm { display: inline-block; width: 11px; height: 11px; border: 2px solid var(--border); border-top-color: var(--text-muted); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .error-box { display: none; background: var(--red-light); border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--red); margin-bottom: 1.5rem; }
     .results { display: none; flex-direction: column; gap: 1.25rem; }
@@ -49,7 +50,6 @@
     .card-meta .sub { font-size: 13px; color: var(--text-muted); }
     .badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 20px; }
     .badge-new { background: var(--green-light); color: var(--green); }
-    .badge-seen { background: #fef9ec; color: #92650a; }
     .badge-sent { background: var(--blue-light); color: var(--blue); }
     .badge-sending { background: #f0f0f0; color: #555; }
     .badge-bounced { background: var(--red-light); color: var(--red); }
@@ -57,6 +57,7 @@
     .motivo-text { font-size: 13px; line-height: 1.6; color: var(--text); margin-bottom: 1rem; }
     .email-trovata { display: flex; align-items: center; gap: 8px; background: var(--green-light); border-radius: 7px; padding: 8px 12px; margin-bottom: 1rem; font-size: 13px; }
     .email-trovata a { color: var(--green); font-weight: 500; text-decoration: none; }
+    .email-cercando { background: var(--surface2); border-radius: 7px; padding: 8px 12px; margin-bottom: 1rem; font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
     .email-non-trovata { background: #fef9ec; border-radius: 7px; padding: 8px 12px; margin-bottom: 1rem; font-size: 13px; color: #92650a; }
     .email-bounced-box { background: var(--red-light); border-radius: 7px; padding: 8px 12px; margin-bottom: 1rem; font-size: 13px; color: var(--red); }
     .email-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
@@ -70,7 +71,7 @@
     .btn-sm-accent:hover { background: #fde0d6; }
     .loading-state { display: none; text-align: center; padding: 3rem; color: var(--text-muted); font-size: 14px; }
     .progress-bar { width: 200px; height: 3px; background: var(--border); border-radius: 2px; margin: 12px auto 0; overflow: hidden; }
-    .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; animation: progress 12s ease-in-out forwards; }
+    .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; animation: progress 6s ease-in-out forwards; }
     @keyframes progress { from { width: 0%; } to { width: 95%; } }
     .stats { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-bottom: 1rem; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; display: none; }
     .queue-status { display: none; background: var(--blue-light); border: 1px solid #c0d0f0; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--blue); margin-bottom: 1rem; }
@@ -139,7 +140,7 @@
 
   <div class="error-box" id="errore"></div>
   <div class="loading-state" id="loading">
-    <div>Ricerca in corso — genero prospect e cerco email reali online...</div>
+    <div>Genero 20 prospect...</div>
     <div class="progress-bar"><div class="progress-fill"></div></div>
   </div>
   <div class="stats" id="stats"></div>
@@ -157,32 +158,23 @@
   let sendIndex = 0;
   let bouncedEmails = new Set();
 
-  const seen = JSON.parse(localStorage.getItem('seen_prospects') || '[]');
   const contacted = JSON.parse(localStorage.getItem('contacted_prospects') || '[]');
   function saveContacted() { localStorage.setItem('contacted_prospects', JSON.stringify(contacted)); }
 
-  // Controlla bounce ogni 5 minuti
   async function checkBounces() {
     try {
-      const res = await fetch('/api/agente', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ azione: 'check_bounces' })
-      });
+      const res = await fetch('/api/agente', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ azione: 'check_bounces' }) });
       const data = await res.json();
       if (data.bounces && data.bounces.length > 0) {
-        const newBounces = data.bounces.filter(e => !bouncedEmails.has(e.toLowerCase()));
-        newBounces.forEach(e => bouncedEmails.add(e.toLowerCase()));
-        if (newBounces.length > 0 && prospectData.length > 0) {
-          applyBouncesToUI(newBounces);
-        }
+        data.bounces.forEach(e => bouncedEmails.add(e.toLowerCase()));
+        applyBounces();
       }
     } catch {}
   }
 
-  function applyBouncesToUI(newBounces) {
+  function applyBounces() {
     prospectData.forEach((p, i) => {
-      if (p.email && newBounces.includes(p.email.toLowerCase())) {
+      if (p.email && bouncedEmails.has(p.email.toLowerCase()) && !p.bounced) {
         prospectData[i].bounced = true;
         const card = document.getElementById(`card-${i}`);
         if (card) {
@@ -190,16 +182,15 @@
           document.getElementById(`badge-${i}`).innerHTML = `<span class="badge badge-bounced">✗ Rimbalzata</span>`;
           const chk = document.getElementById(`chk-${i}`);
           if (chk) { chk.checked = false; chk.disabled = true; }
-          const emailDiv = card.querySelector('.email-trovata');
-          if (emailDiv) emailDiv.outerHTML = `<div class="email-bounced-box">❌ Email rimbalzata — rimossa dalla lista</div>`;
+          updateEmailRow(i);
         }
       }
     });
+    updateStats();
     updateSendButton();
   }
 
   setInterval(checkBounces, 5 * 60 * 1000);
-  checkBounces();
 
   async function cercaProspect() {
     const servizio = document.getElementById('servizio').value;
@@ -214,15 +205,11 @@
     document.getElementById('btn-send-all').style.display = 'none';
     document.getElementById('queue-status').style.display = 'none';
     document.getElementById('btn-cerca').disabled = true;
-    document.getElementById('btn-cerca').innerHTML = '<div class="spinner"></div> Ricerca in corso...';
+    document.getElementById('btn-cerca').innerHTML = '<div class="spinner"></div> Genero prospect...';
     if (sendTimer) { clearTimeout(sendTimer); sendTimer = null; }
 
     try {
-      const res = await fetch('/api/agente', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ servizio, tipo, zona, tono, azione: 'cerca' })
-      });
+      const res = await fetch('/api/agente', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ servizio, tipo, zona, tono, azione: 'cerca' }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
@@ -230,17 +217,18 @@
         ...p,
         already_contacted: contacted.includes(p.nome),
         selected: false,
-        bounced: p.bounced || (p.email && bouncedEmails.has(p.email.toLowerCase()))
+        bounced: false,
+        email: null,
+        email_status: 'searching'
       }));
 
-      const conEmail = prospectData.filter(p => p.email && !p.bounced).length;
-      const bounceCount = prospectData.filter(p => p.bounced).length;
-      const statsEl = document.getElementById('stats');
-      statsEl.style.display = 'block';
-      statsEl.textContent = `${prospectData.length} prospect · ${conEmail} con email valida · ${bounceCount} rimbalzate · ${prospectData.filter(p => p.already_contacted).length} già contattati`;
-
       renderProspects(prospectData);
+      document.getElementById('stats').style.display = 'block';
       document.getElementById('btn-send-all').style.display = 'flex';
+      updateStats();
+
+      // cerca email progressivamente
+      cercaEmailProgressive();
     } catch (e) {
       document.getElementById('errore').style.display = 'block';
       document.getElementById('errore').textContent = 'Errore: ' + e.message;
@@ -251,6 +239,73 @@
     document.getElementById('btn-cerca').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Cerca 20 prospect e genera email';
   }
 
+  async function cercaEmailProgressive() {
+    const BATCH = 5;
+    for (let i = 0; i < prospectData.length; i += BATCH) {
+      const batch = prospectData.slice(i, i + BATCH).map((p, j) => ({ nome: p.nome, citta: p.citta, idx: i + j }));
+      try {
+        const res = await fetch('/api/agente', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ azione: 'cerca_email', items: batch.map(b => ({ nome: b.nome, citta: b.citta })) })
+        });
+        const data = await res.json();
+        if (data.results) {
+          data.results.forEach((r, k) => {
+            const idx = batch[k].idx;
+            prospectData[idx].email = r.email;
+            prospectData[idx].bounced = r.bounced || (r.email && bouncedEmails.has(r.email.toLowerCase()));
+            prospectData[idx].email_status = 'done';
+            updateEmailRow(idx);
+            updateCardState(idx);
+          });
+          updateStats();
+          updateSendButton();
+        }
+      } catch (e) {
+        batch.forEach(b => { prospectData[b.idx].email_status = 'done'; prospectData[b.idx].email = null; updateEmailRow(b.idx); });
+      }
+    }
+    updateStats(true);
+  }
+
+  function updateStats(done) {
+    const conEmail = prospectData.filter(p => p.email && !p.bounced).length;
+    const bounceCount = prospectData.filter(p => p.bounced).length;
+    const searching = prospectData.filter(p => p.email_status === 'searching').length;
+    const statsEl = document.getElementById('stats');
+    if (searching > 0 && !done) {
+      statsEl.innerHTML = `<span class="spinner-sm"></span> ${prospectData.length} prospect · ${conEmail} con email · ricerca in corso (${searching} rimaste)...`;
+    } else {
+      statsEl.textContent = `${prospectData.length} prospect · ${conEmail} con email valida · ${bounceCount} rimbalzate · ${prospectData.filter(p => p.already_contacted).length} già contattati`;
+    }
+  }
+
+  function updateEmailRow(i) {
+    const p = prospectData[i];
+    const row = document.getElementById(`emailrow-${i}`);
+    if (!row) return;
+    if (p.bounced) row.outerHTML = `<div class="email-bounced-box" id="emailrow-${i}">❌ Email rimbalzata — rimossa</div>`;
+    else if (p.email_status === 'searching') row.outerHTML = `<div class="email-cercando" id="emailrow-${i}"><span class="spinner-sm"></span> Cerco email online...</div>`;
+    else if (p.email) row.outerHTML = `<div class="email-trovata" id="emailrow-${i}">✅ <a href="mailto:${p.email}">${p.email}</a></div>`;
+    else row.outerHTML = `<div class="email-non-trovata" id="emailrow-${i}">⚠️ Email non trovata</div>`;
+  }
+
+  function updateCardState(i) {
+    const p = prospectData[i];
+    const chk = document.getElementById(`chk-${i}`);
+    const card = document.getElementById(`card-${i}`);
+    if (p.bounced) {
+      card.classList.add('bounced-card');
+      document.getElementById(`badge-${i}`).innerHTML = `<span class="badge badge-bounced">✗ Rimbalzata</span>`;
+      if (chk) { chk.checked = false; chk.disabled = true; }
+    } else if (p.email && !p.already_contacted) {
+      if (chk) chk.disabled = false;
+    } else if (!p.email) {
+      if (chk) chk.disabled = true;
+    }
+  }
+
   function renderProspects(prospects) {
     const container = document.getElementById('results');
     container.innerHTML = '';
@@ -259,30 +314,16 @@
     prospects.forEach((p, i) => {
       const initials = p.nome.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
       const card = document.createElement('div');
-      card.className = 'prospect-card' + (p.already_contacted ? ' contacted' : '') + (p.bounced ? ' bounced-card' : '');
+      card.className = 'prospect-card' + (p.already_contacted ? ' contacted' : '');
       card.id = `card-${i}`;
       card.style.animationDelay = (i * 0.03) + 's';
 
-      let emailHtml;
-      if (p.bounced) {
-        emailHtml = `<div class="email-bounced-box">❌ Email rimbalzata — rimossa dalla lista</div>`;
-      } else if (p.email) {
-        emailHtml = `<div class="email-trovata">✅ <a href="mailto:${p.email}">${p.email}</a></div>`;
-      } else {
-        emailHtml = `<div class="email-non-trovata">⚠️ Email non trovata</div>`;
-      }
-
-      let badgeHtml;
-      if (p.bounced) badgeHtml = `<span class="badge badge-bounced">✗ Rimbalzata</span>`;
-      else if (p.already_contacted) badgeHtml = `<span class="badge badge-sent">✓ Inviata</span>`;
-      else badgeHtml = `<span class="badge badge-new">Nuovo</span>`;
-
-      const checkDisabled = p.already_contacted || !p.email || p.bounced ? 'disabled' : '';
+      let badgeHtml = p.already_contacted ? `<span class="badge badge-sent">✓ Inviata</span>` : `<span class="badge badge-new">Nuovo</span>`;
 
       card.innerHTML = `
         <div class="card-header">
-          <input type="checkbox" class="card-checkbox" id="chk-${i}" ${checkDisabled} onchange="toggleSelect(${i})" />
-          <div class="avatar ${p.bounced ? 'bounced' : ''}">${initials}</div>
+          <input type="checkbox" class="card-checkbox" id="chk-${i}" disabled onchange="toggleSelect(${i})" />
+          <div class="avatar">${initials}</div>
           <div class="card-meta">
             <div class="nome">${p.nome}</div>
             <div class="sub">${p.contatto} &nbsp;·&nbsp; ${p.citta}</div>
@@ -291,7 +332,7 @@
         </div>
         <div class="card-body">
           <div class="motivo-text">${p.motivo}</div>
-          ${emailHtml}
+          <div class="email-cercando" id="emailrow-${i}"><span class="spinner-sm"></span> Cerco email online...</div>
           <div class="email-box" id="emailbox-${i}">
             <div class="email-subject">Oggetto: <span>${p.email_subject}</span></div>
             <div class="email-body">${p.email_body}</div>
@@ -334,17 +375,12 @@
       document.getElementById('btn-send-all').disabled = false;
       return;
     }
-
     const p = sendQueue[sendIndex];
     document.getElementById('queue-status').style.display = 'block';
     document.getElementById(`badge-${p.index}`).innerHTML = `<span class="badge badge-sending">⏳ Invio...</span>`;
 
     try {
-      const res = await fetch('/api/agente', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ azione: 'invia', to: p.email, subject: p.email_subject, emailBody: p.email_body })
-      });
+      const res = await fetch('/api/agente', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ azione: 'invia', to: p.email, subject: p.email_subject, emailBody: p.email_body }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
@@ -357,18 +393,13 @@
       document.getElementById(`chk-${p.index}`).checked = false;
       document.getElementById(`chk-${p.index}`).disabled = true;
       document.getElementById(`badge-${p.index}`).innerHTML = `<span class="badge badge-sent">✓ Inviata</span>`;
-
     } catch(e) {
       document.getElementById(`badge-${p.index}`).innerHTML = `<span class="badge badge-bounced">✗ Errore</span>`;
     }
 
     sendIndex++;
-
     if (sendIndex < sendQueue.length) {
-      const DELAY = 45 * 60 * 1000;
       let remaining_sec = 45 * 60;
-      document.getElementById('queue-status').textContent = `✅ Inviata a ${p.nome}. Prossima (${sendQueue[sendIndex].nome}) tra 45:00...`;
-
       const countdown = setInterval(() => {
         remaining_sec--;
         const m = String(Math.floor(remaining_sec / 60)).padStart(2, '0');
@@ -376,8 +407,7 @@
         document.getElementById('queue-status').textContent = `⏳ Prossima email (${sendQueue[sendIndex].nome}) tra ${m}:${s}...`;
         if (remaining_sec <= 0) clearInterval(countdown);
       }, 1000);
-
-      sendTimer = setTimeout(() => { clearInterval(countdown); inviaNext(); }, DELAY);
+      sendTimer = setTimeout(() => { clearInterval(countdown); inviaNext(); }, 45 * 60 * 1000);
     } else {
       inviaNext();
     }
@@ -396,11 +426,7 @@
     const box = document.getElementById('emailbox-' + i);
     box.style.opacity = '0.4';
     try {
-      const res = await fetch('/api/agente', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ servizio, tono, azione: 'rigenera', prospect: p })
-      });
+      const res = await fetch('/api/agente', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ servizio, tono, azione: 'rigenera', prospect: p }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       prospectData[i].email_subject = data.result.email_subject;
